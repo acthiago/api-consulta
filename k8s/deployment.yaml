@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: api-consulta-dividas
-        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:v9  # Substituir pela imagem do Docker Hub ou registry privado
+        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:latest  # Substituir pela imagem do Docker Hub ou registry privado
         ports:
         - containerPort: 8000
         env:
