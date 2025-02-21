@@ -37,4 +37,4 @@ jobs:
       - name: ⚙️ Atualizar Kubernetes Deployment
         run: |
           doctl kubernetes cluster kubeconfig save ${{ secrets.DO_CLUSTER_NAME }}
-          kubectl rollout restart deployment minha-api
+          kubectl apply -f k8s/deployment.yaml 
