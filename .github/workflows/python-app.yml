@@ -27,7 +27,7 @@ jobs:
       - name: 🏗️ Construir e push da imagem Docker
         run: |
           docker build -t ${{ secrets.DO_REGISTRY }}/poc-api-consulta:latest .
-          docker push ${{ secrets.DO_REGISTRY }}/poc-cobranca/poc-api-consulta:latest
+          docker push ${{ secrets.DO_REGISTRY }}/poc-api-consulta:latest
 
       - name: 🔑 Login na DigitalOcean
         uses: digitalocean/action-doctl@v2
