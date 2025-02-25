@@ -38,7 +38,7 @@ def gerar_boleto_pdf(codigo_barras, pix_codigo, valor, vencimento, id_pagamento)
     """
     Função que gera um boleto em PDF com QR Code PIX.
     """
-    nome_arquivo = f"boletos/boleto_{id_pagamento}.pdf"
+    nome_arquivo = f"/mnt/arquivos/boletos/boleto_{id_pagamento}.pdf"
     
     # Criar diretório se não existir
     os.makedirs("boletos", exist_ok=True)
@@ -117,7 +117,7 @@ def download_boleto(id_pagamento: str):
     """
     Endpoint para baixar o boleto em PDF.
     """
-    nome_arquivo = f"boletos/boleto_{id_pagamento}.pdf"
+    nome_arquivo = f"/mnt/arquivos/boletos/boleto_{id_pagamento}.pdf"
     if not os.path.exists(nome_arquivo):
         raise HTTPException(status_code=404, detail="Boleto não encontrado.")
     

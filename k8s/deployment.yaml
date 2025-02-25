@@ -6,7 +6,7 @@ metadata:
   labels:
     app: api-consulta-dividas
 spec:
-  replicas: 2  # Número de réplicas para alta disponibilidade
+  replicas: 1  # Número de réplicas para alta disponibilidade
   strategy:
     canary:
       steps:
@@ -28,7 +28,7 @@ spec:
     spec:
       containers:
       - name: api-consulta-dividas
-        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:latest  # Substituir pela imagem do Docker Hub ou registry privado
+        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:v9  # Substituir pela imagem do Docker Hub ou registry privado
         ports:
         - containerPort: 8000
         env:
@@ -59,6 +59,15 @@ spec:
           limits:
             memory: "200Mi"
             cpu: "500m"
+        volumeMounts:
+          - name: nfs
+            mountPath: "/mnt/arquivos"
+
+      volumes:
+        - name: nfs
+          persistentVolumeClaim:
+            claimName: nfs-pvc-api-consulta
+            readOnly: false
 
 ---
 apiVersion: v1
