@@ -9,15 +9,24 @@ spec:
   replicas: 1  # Número de réplicas para alta disponibilidade
   strategy:
     canary:
+      # Reference to a Service which the controller will update to point to the canary ReplicaSet
+      canaryService: api-consulta-canary
+      # Reference to a Service which the controller will update to point to the stable ReplicaSet
+      stableService: api-consulta-estavel
+      trafficRouting:
+        nginx:
+          # Reference to an Ingress which has a rule pointing to the stable service (e.g. rollouts-demo-stable)
+          # This ingress will be cloned with a new name, in order to achieve NGINX traffic splitting.
+          stableIngress: api-consulta-dividas
       steps:
-      - setWeight: 20
-      - pause: {}
-      - setWeight: 40
-      - pause: {duration: 20}
-      - setWeight: 60
-      - pause: {duration: 30}
-      - setWeight: 80
-      - pause: {duration: 50}
+        - setWeight: 20
+        - pause: {}
+        - setWeight: 40
+        - pause: {duration: 10}
+        - setWeight: 60
+        - pause: {duration: 10}
+        - setWeight: 80
+        - pause: {duration: 10}
   selector:
     matchLabels:
       app: api-consulta-dividas
@@ -28,7 +37,7 @@ spec:
     spec:
       containers:
       - name: api-consulta-dividas
-        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:latest  # Substituir pela imagem do Docker Hub ou registry privado
+        image: registry.digitalocean.com/poc-cobranca/poc-api-consulta:v9  # Substituir pela imagem do Docker Hub ou registry privado
         ports:
         - containerPort: 8000
         env:
@@ -73,7 +82,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: api-consulta-dividas
+  name: api-consulta-estavel
   namespace: api-consulta
 spec:
   selector:
@@ -84,3 +93,45 @@ spec:
       targetPort: 8000
   type: ClusterIP
 
+---
+ 
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-consulta-canary
+  namespace: api-consulta
+spec:
+  selector:
+    app: api-consulta-dividas
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  type: ClusterIP
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-consulta-dividas
+  namespace: api-consulta
+  annotations:
+    cert-manager.io/issuer: letsencrypt-nginx
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: api.thiagoac.com  
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-consulta-estavel
+            port:
+              number: 80
+  tls:
+    - hosts:
+      - api.thiagoac.com
+      secretName: letsencrypt-nginx
