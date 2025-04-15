@@ -6,11 +6,15 @@ from routes.pagamentos import router as pagamentos_router
 from routes.boletos import router as boletos_router
 import os
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
 
-print("🔹 AUTHORIZATION_URL:", os.getenv("AUTHORIZATION_URL"))
-print("🔹 TOKEN_URL:", os.getenv("TOKEN_URL"))
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("🔹 AUTHORIZATION_URL: %s", os.getenv("AUTHORIZATION_URL"))
+logger.info("🔹 TOKEN_URL: %s", os.getenv("TOKEN_URL"))
 
 app = FastAPI(
     title="API de Cobranças Protegida",
@@ -26,6 +30,11 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+# Adicionar endpoint de saúde
+@app.get("/health", tags=["Health"])
+def health_check():
+    return {"status": "ok"}
 
 # Registrar rotas
 app.include_router(auth_router, prefix="/auth")
