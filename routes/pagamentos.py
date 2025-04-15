@@ -1,28 +1,31 @@
-from fastapi import APIRouter, HTTPException , Depends
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from pymongo import MongoClient
+from pymongo.database import Database
 import os
 from dotenv import load_dotenv
 import random
 from datetime import datetime
 from fastapi.security import OAuth2PasswordBearer
 import segno
-
+from services.db_service import get_db
 
 load_dotenv()
-
-# Conexão com MongoDB
-MONGO_URI = os.getenv("MONGO_URI")
-client = MongoClient(MONGO_URI)
-db = client["banco-dividas"]
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 class PagamentoRequest(BaseModel):
     cpf: str
-    ids_dividas: list[int]   # Agora aceita múltiplos IDs de dívida
+    ids_dividas: list[int]  # Agora aceita múltiplos IDs de dívida
 
+    @classmethod
+    def validate(cls, data):
+        if not data["cpf"].isdigit() or len(data["cpf"]) not in [11, 14]:
+            raise ValueError("CPF inválido")
+        if not data["ids_dividas"]:
+            raise ValueError("A lista de IDs de dívidas não pode estar vazia")
+        return data
 
 class BoletoResponse(BaseModel):
     id_pagamento: str
@@ -30,6 +33,12 @@ class BoletoResponse(BaseModel):
     codigo_barras: str
     valor_total: float
     status: str
+
+    @classmethod
+    def validate(cls, data):
+        if data["valor_total"] <= 0:
+            raise ValueError("O valor total deve ser maior que zero")
+        return data
 
 class PagamentoResponse(BaseModel):
     id_pagamento: str
@@ -40,10 +49,7 @@ class PagamentoResponse(BaseModel):
     qr_code: str
     status: str
 
-
-
-
-def registrar_historico_pagamento(ids_dividas, id_pagamento, metodo, status):
+def registrar_historico_pagamento(ids_dividas, id_pagamento, metodo, status, db: Database):
     """
     Adiciona um registro no histórico de interações de cada dívida.
     Se o campo 'historico_interacoes' não existir, cria como array antes de adicionar um novo item.
@@ -70,10 +76,8 @@ def registrar_historico_pagamento(ids_dividas, id_pagamento, metodo, status):
             }
         )
 
-
-
 @router.get("/status/{id_pagamento}")
-def status_pagamento(id_pagamento: str, token: str = Depends(oauth2_scheme)):
+def status_pagamento(id_pagamento: str, db: Database = Depends(get_db), token: str = Depends(oauth2_scheme)):
     """
     Consulta o status de um pagamento.
     """
@@ -89,9 +93,8 @@ def status_pagamento(id_pagamento: str, token: str = Depends(oauth2_scheme)):
         "ids_dividas": pagamento["ids_dividas"]
     }
 
-
 @router.get("/dividas-pendentes/{cpf}")
-def listar_dividas_pendentes(cpf: str , token: str = Depends(oauth2_scheme)):
+def listar_dividas_pendentes(cpf: str, db: Database = Depends(get_db), token: str = Depends(oauth2_scheme)):
     """
     Lista todas as dívidas pendentes de um cliente com base no CPF.
     """
@@ -111,14 +114,12 @@ def listar_dividas_pendentes(cpf: str , token: str = Depends(oauth2_scheme)):
 
     return {"cpf": cpf, "dividas_pendentes": dividas_pendentes}
 
-
 @router.post("/confirmar-pagamento/{id_pagamento}")
-def confirmar_pagamento(id_pagamento: str , token: str = Depends(oauth2_scheme)):
+def confirmar_pagamento(id_pagamento: str, db: Database = Depends(get_db), token: str = Depends(oauth2_scheme)):
     """
     Confirma o pagamento e atualiza o status da dívida para quitado.
     """
     pagamento = db["pagamentos"].find_one({"_id": id_pagamento})
-
 
     if not pagamento:
         raise HTTPException(status_code=404, detail="Pagamento não encontrado.")
@@ -143,4 +144,11 @@ def confirmar_pagamento(id_pagamento: str , token: str = Depends(oauth2_scheme))
         )
 
     return {"id_pagamento": id_pagamento, "status": "aprovado", "mensagem": "Pagamento confirmado com sucesso."}
+
+@router.post("/gerar", response_model=BoletoResponse, dependencies=[Depends(oauth2_scheme)])
+def gerar_boleto(pagamento: PagamentoRequest):
+    """
+    Gera um boleto em PDF para pagamento de uma ou mais dívidas, incluindo QR Code PIX.
+    """
+    # ...existing code...
 
